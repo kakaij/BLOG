@@ -5,29 +5,26 @@ ob_start(); // Start output buffering
 require 'includes/db.php'; // Use PDO instead of MySQLi
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $login = trim($_POST["login"]); // Username or email
+    $username = trim($_POST["username"]);
+    $email = trim($_POST["email"]);
     $password = $_POST["password"];
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT); 
 
     try {
-        // Retrieve user data from the database (PDO prevents SQL Injection)
-        $stmt = $pdo->prepare("SELECT id, username, role, password FROM users WHERE username = ? OR email = ?");
-        $stmt->execute([$login, $login]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($user && password_verify($password, $user["password"])) {
-            // Successful login: Set session variables
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role'];
-
-            header("Location: index.php"); // Redirect to homepage
-            exit();
+        // Check if username or email already exists
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
+        $stmt->execute([$username, $email]);
+        if ($stmt->rowCount() > 0) {
+            $error = "Username or email already exists.";
         } else {
-            // Generic error message (Avoid exposing valid/invalid username detection)
-            $error = "Invalid login credentials.";
+            // Insert user into the database
+            $stmt = $pdo->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
+            $stmt->execute([$username, $email, $hashed_password]);
+            header("Location: login.php");
+            exit();
         }
     } catch (PDOException $e) {
-        die("Database error: " . $e->getMessage()); // For debugging (remove in production)
+        die("Error: " . $e->getMessage());
     }
 }
 ?>
@@ -37,27 +34,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Register</title>
     <style>
         body {
-            background-color: #f8f9fa;
+            background-color: rgb(64, 68, 72);
             font-family: 'Arial', sans-serif;
+            height: 100vh; /* Full viewport height */
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        .login-container {
+        .registration-container {
             max-width: 400px;
-            margin: 100px auto;
+            width: 100%;
             padding: 30px;
-            background-color: #ffffff;
+            background-color: rgb(122, 108, 108);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             border-radius: 12px;
+            text-align: center;
         }
 
-        .login-container h2 {
+        .registration-container h2 {
             margin-bottom: 30px;
             color: #495057;
-            text-align: center;
         }
 
         .form-group label {
@@ -66,6 +67,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         .form-control {
             border-radius: 5px;
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
         }
 
         .btn-primary {
@@ -73,8 +77,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             padding: 12px;
             font-size: 18px;
             border-radius: 5px;
-            background-color: #007bff;
+            background-color: rgb(106, 110, 114);
             border: none;
+            color: white;
         }
 
         .btn-primary:hover {
@@ -86,7 +91,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         .text-center a {
-            color: #007bff;
+            color: rgb(0, 8, 255);
             text-decoration: none;
         }
 
@@ -107,8 +112,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </head>
 <body>
 
-<div class="login-container">
-    <h2>Login</h2>
+<div class="registration-container">
+    <h2>Register</h2>
 
     <?php if (isset($error)) : ?>
         <div class="error-message">
@@ -118,13 +123,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
         <div class="form-group">
-            <label for="login">Username :</label>
-            <input type="text" id="login" name="login" class="form-control" required>
+            <label for="username">Username :</label>
+            <input type="text" id="username" name="username" class="form-control" required>
         </div>
 
         <div class="form-group">
-            <label for="login"> Email:</label>
-            <input type="text" id="login" name="login" class="form-control" required>
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" class="form-control" required>
         </div>
 
         <div class="form-group">
@@ -132,11 +137,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <input type="password" id="password" name="password" class="form-control" required>
         </div>
 
-        <button type="submit" class="btn btn-primary">Login</button>
+        <button type="submit" class="btn-primary">Register</button>
     </form>
 
     <div class="text-center">
-        <p>Don't have an account? <a href="registration.php">Register here</a></p>
+        <p>Already have an account? <a href="login.php">Login here</a></p>
     </div>
 </div>
 

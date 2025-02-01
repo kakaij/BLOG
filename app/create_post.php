@@ -4,7 +4,7 @@ require '../includes/db.php'; // Ensure the database connection is included
 
 // Redirect if user is not logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: /BlogApp/index.php");
     exit;
 }
 

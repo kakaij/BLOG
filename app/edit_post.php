@@ -1,67 +1,54 @@
 <?php
-session_start(); // Start the session
-require '../includes/db.php'; // Ensuring the database connection is included
+session_start();
+require '../includes/db.php';
 
-// Redirecting if user is not logged in
+// Redirect if not logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: /BlogApp/app/login.php");
     exit;
 }
 
-// Check if 'id' is provided in the URL (for editing a post)
+// Ensure post ID is provided
 if (!isset($_GET['id'])) {
-    die("Post ID is missing");
+    die("Post ID is missing.");
 }
 
 $post_id = intval($_GET['id']);
 
-// Fetch the post from the database
+// Fetch the post
 $stmt = $pdo->prepare("SELECT posts.*, categories.name AS category_name 
                        FROM posts 
                        JOIN categories ON posts.category_id = categories.id 
                        WHERE posts.id = ? AND posts.user_id = ?");
-$stmt->execute([$post_id, $_SESSION['user_id']]); // Ensure user can only edit their own posts
+$stmt->execute([$post_id, $_SESSION['user_id']]);
 $post = $stmt->fetch();
-
 
 // If no post is found
 if (!$post) {
-    die("Post not found or you don't have permission to edit this post.");
+    die("Post not found or permission denied.");
 }
 
-// Predefined categories
-$categories = ['adventure', 'romance', 'fantasy', 'history', 'animation'];
+// Fetch all available categories
+$categories_stmt = $pdo->query("SELECT * FROM categories ORDER BY name ASC");
+$categories = $categories_stmt->fetchAll();
 
-// Handle form submission to update post
+// Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title = htmlspecialchars($_POST['title']);
-    $content = htmlspecialchars($_POST['content']);
-    $category_name = htmlspecialchars($_POST['category_name']); // category selected by user
+    $title = trim($_POST['title']);
+    $content = trim($_POST['content']);
+    $category_id = intval($_POST['category_id']);
 
-    // Find the category_id based on the selected category name
-    $stmt = $pdo->prepare("SELECT id FROM categories WHERE name = ?");
-    $stmt->execute([$category_name]);
-    $category = $stmt->fetch();
-    
-    // If category exists, get category_id
-    if ($category) {
-        $category_id = $category['id'];
-    } else {
-        // If category doesn't exist, insert it
-        $stmt = $pdo->prepare("INSERT INTO categories (name) VALUES (?)");
-        $stmt->execute([$category_name]);
-        $category_id = $pdo->lastInsertId(); // Get the newly inserted category_id
-    }
-
-    // Update the post in the database
+    // Update post
     $stmt = $pdo->prepare("UPDATE posts SET title = ?, content = ?, category_id = ? WHERE id = ? AND user_id = ?");
-    $stmt->execute([$title, $content, $category_id, $post_id, $_SESSION['user_id']]);
+    $updated = $stmt->execute([$title, $content, $category_id, $post_id, $_SESSION['user_id']]);
 
-    // Redirect to the homepage or the updated post page
-    header("Location: index.php");
-    exit;
+    if ($updated) {
+        header("Location: /BlogApp/index.php");
+        exit;
+    } else {
+        echo "Error updating the post.";
+    }
 }
-
 ?>
 
 <!DOCTYPE html>
@@ -88,11 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="form-group">
-                <label for="category_name">Category</label>
-                <select id="category_name" name="category_name" class="form-control" required>
+                <label for="category_id">Category</label>
+                <select id="category_id" name="category_id" class="form-control" required>
                     <?php foreach ($categories as $category): ?>
-                        <option value="<?= htmlspecialchars($category) ?>" <?= ($category === $post['category_name']) ? 'selected' : '' ?>>
-                            <?= ucfirst($category) ?>
+                        <option value="<?= $category['id'] ?>" <?= ($category['id'] == $post['category_id']) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($category['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -101,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <button type="submit" class="btn btn-primary">Update Post</button>
         </form>
 
-        <a href="index.php" class="btn btn-secondary mt-3">Back to Home</a>
+        <a href="/BlogApp/index.php" class="btn btn-secondary mt-3">Back to Home</a>
     </div>
 </body>
 </html>
