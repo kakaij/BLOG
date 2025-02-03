@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch predefined categories for the dropdown
 $categories = [
-    'adventure', 'romance', 'fantasy', 'history', 'animation'
+    'adventure', 'romance', 'fantasy', 'history', 'animation','news','education', 'thriller', 'horror', 
 ];
 ?>
 
